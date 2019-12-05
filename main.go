@@ -17,7 +17,19 @@ func main() {
 	problem2()
 	problem3()
 	problem4()
+	problem5()
 }
+
+func problem5() {
+	fmt.Println("Problem 5")
+	input5 := readFileAsString("problem5_input")
+	computer := NewIntCodeComputer(input5, 1)
+	computer.Begin()
+	fmt.Println(computer.code[computer.currentPosition+1])
+	computer2 := NewIntCodeComputer(input5, 5)
+	computer2.Begin()
+}
+
 
 func problem4() {
 	fmt.Println("Problem 4")
@@ -153,7 +165,7 @@ func readFileAsString(filename string) string {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	contents := string(file)
+	contents := strings.TrimSpace(string(file))
 	return contents
 }
 
@@ -209,7 +221,192 @@ func problem2() {
 		}
 	}
 	fmt.Println("Found nothing")
+}
 
+const PositionMode = 0
+const ImmediateMode = 1
+
+type IntCodeComputer struct {
+	code []int
+	input int
+	currentPosition int
+	opcode int
+	parameterMode1 int
+	parameterMode2 int
+	parameterMode3 int
+}
+
+func NewIntCodeComputer(code string, input int) *IntCodeComputer {
+	return &IntCodeComputer{code: createIntArray(code), input: input}
+}
+
+func (ic *IntCodeComputer) parseCurrentInstruction() {
+	parameterMode := fmt.Sprintf("%05d",ic.code[ic.currentPosition])
+
+	split := strings.Split(parameterMode, "")
+	firstOpcode, err := strconv.Atoi(fmt.Sprintf("%v%v", split[3], split[4]))
+	if err != nil {
+		log.Fatalln("unable to parse opcode from", parameterMode)
+	}
+	ic.opcode = firstOpcode
+	ic.parameterMode1 = ParseInt(split[2])
+	ic.parameterMode2 = ParseInt(split[1])
+	ic.parameterMode3 = ParseInt(split[0])
+}
+
+func (ic *IntCodeComputer) Begin() {
+	ic.currentPosition = 0
+	for ic.opcode != 99 {
+		//fmt.Printf("%d: %d %d %d\n", ic.code[ic.currentPosition], ic.code[ic.currentPosition+1], ic.code[ic.currentPosition+2], ic.code[ic.currentPosition+3])
+		ic.nextInstruction()
+	}
+	//fmt.Println("opcode is", ic.opcode)
+}
+
+func ParseInt(in string) int {
+	var isNegative bool
+	if strings.HasPrefix(in, "-") {
+		in = in[1:]
+	}
+
+	atoi, err := strconv.Atoi(in)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if isNegative {
+		return -1 * atoi
+	}
+	return atoi
+}
+
+func (ic *IntCodeComputer) nextInstruction() bool {
+	ic.parseCurrentInstruction()
+	currentOpcode := ic.opcode
+	switch currentOpcode {
+	case 1:
+		p1 := ic.code[ic.currentPosition+1]
+		p2 := ic.code[ic.currentPosition+2]
+		p3 := ic.code[ic.currentPosition+3]
+		var v1, v2 int
+		if ic.parameterMode1 == ImmediateMode {
+			v1 = p1
+		} else {
+			v1 = ic.code[p1]
+		}
+		if ic.parameterMode2 == ImmediateMode {
+			v2 = p2
+		} else {
+			v2 = ic.code[p2]
+		}
+		//fmt.Println("add ", v1, v2, "to pos", p3)
+		ic.code[p3] = v1 + v2
+		ic.currentPosition = ic.currentPosition + 4
+	case 2:
+		p1 := ic.code[ic.currentPosition+1]
+		p2 := ic.code[ic.currentPosition+2]
+		p3 := ic.code[ic.currentPosition+3]
+		var v1, v2 int
+		if ic.parameterMode1 == ImmediateMode {
+			v1 = p1
+		} else {
+			v1 = ic.code[p1]
+		}
+		if ic.parameterMode2 == ImmediateMode {
+			v2 = p2
+		} else {
+			v2 = ic.code[p2]
+		}
+		//fmt.Println("mutlitply ", v1, v2, "to pos", p3)
+		ic.code[p3] = v1 * v2
+		ic.currentPosition = ic.currentPosition + 4
+	case 3:
+		p1 := ic.code[ic.currentPosition+1]
+		ic.code[p1] = ic.input
+		//fmt.Println("set pos", p1, "as", ic.input)
+		ic.currentPosition = ic.currentPosition + 2
+	case 4:
+		p1 := ic.code[ic.currentPosition+1]
+		fmt.Println("output", p1)
+		ic.currentPosition = ic.currentPosition + 2
+	case 5:
+		p1 := ic.code[ic.currentPosition+1]
+		p2 := ic.code[ic.currentPosition+2]
+		var v1, v2 int
+		if ic.parameterMode1 == ImmediateMode {
+			v1 = p1
+		} else {
+			v1 = ic.code[p1]
+		}
+		if ic.parameterMode2 == ImmediateMode {
+			v2 = p2
+		} else {
+			v2 = ic.code[p2]
+		}
+
+		if v1 != 0 {
+			ic.currentPosition = v2
+		}
+		ic.currentPosition = ic.currentPosition + 3
+	case 6:
+		p1 := ic.code[ic.currentPosition+1]
+		p2 := ic.code[ic.currentPosition+2]
+		var v1, v2 int
+		if ic.parameterMode1 == ImmediateMode {
+			v1 = p1
+		} else {
+			v1 = ic.code[p1]
+		}
+		if ic.parameterMode2 == ImmediateMode {
+			v2 = p2
+		} else {
+			v2 = ic.code[p2]
+		}
+		if v1 == 0 {
+			ic.currentPosition = v2
+		}
+		ic.currentPosition = ic.currentPosition + 3
+	case 7:
+		p1 := ic.code[ic.currentPosition+1]
+		p2 := ic.code[ic.currentPosition+2]
+		p3 := ic.code[ic.currentPosition+3]
+		var v1, v2 int
+		if ic.parameterMode1 == ImmediateMode {
+			v1 = p1
+		} else {
+			v1 = ic.code[p1]
+		}
+		if ic.parameterMode2 == ImmediateMode {
+			v2 = p2
+		} else {
+			v2 = ic.code[p2]
+		}
+		if v1 < v2 {
+			ic.code[p3] = 1
+		}
+		ic.currentPosition = ic.currentPosition + 4
+	case 8:
+		p1 := ic.code[ic.currentPosition+1]
+		p2 := ic.code[ic.currentPosition+2]
+		p3 := ic.code[ic.currentPosition+3]
+		var v1, v2 int
+		if ic.parameterMode1 == ImmediateMode {
+			v1 = p1
+		} else {
+			v1 = ic.code[p1]
+		}
+		if ic.parameterMode2 == ImmediateMode {
+			v2 = p2
+		} else {
+			v2 = ic.code[p2]
+		}
+		if v1 == v2 {
+			ic.code[p3] = 1
+		}
+		ic.currentPosition = ic.currentPosition + 4
+	case 99:
+		return true
+	}
+	return false
 }
 
 func processIntCode(program []int) []int {
